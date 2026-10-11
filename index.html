@@ -1,0 +1,597 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Lilo's Deep-Pond Quiz</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#27b0cc">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Lilo Quiz">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+  --bg1:#8fe6ee; --bg2:#27b0cc; --bg3:#0d6a92;
+  --ink:#073b4c; --card:#fffffff0;
+  --pink:#ff8fb1; --pink2:#ff5d8f; --pinkdark:#b83a66;
+  --warn:#ffd23f; --good:#2ecc71; --bad:#ff4d4d;
+}
+:root:not([data-theme="light"]){}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg1:#1a8fa8; --bg2:#0e5f85; --bg3:#062a45;
+    --ink:#06303f; --card:#f4fdffee;
+  }
+}
+:root[data-theme="dark"]{
+  --bg1:#1a8fa8; --bg2:#0e5f85; --bg3:#062a45;
+  --ink:#06303f; --card:#f4fdffee;
+}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+html,body{min-height:100%}
+body{
+  margin:0;font-family:'Fredoka','Trebuchet MS',system-ui,sans-serif;color:var(--ink);
+  background:#0e5f85;
+  background:linear-gradient(180deg,var(--bg1),var(--bg2) 55%,var(--bg3));
+  background-attachment:fixed;overflow-x:hidden;-webkit-tap-highlight-color:transparent;
+}
+#bgb{position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:0}
+.bub{position:absolute;bottom:-120px;border-radius:50%;
+  background:radial-gradient(circle at 30% 30%,#ffffffaa,#ffffff30 60%,#ffffff00);
+  border:1px solid #ffffff66;animation:rise linear infinite}
+@keyframes rise{to{transform:translate(24px,-125vh)}}
+body.panic::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:5;
+  box-shadow:inset 0 0 90px 20px #ff1d1dcc;animation:pulse .5s infinite alternate}
+@keyframes pulse{from{opacity:.25}to{opacity:1}}
+#app{position:relative;z-index:1;max-width:620px;margin:0 auto;padding:14px 14px 30px}
+.screen{display:none}.screen.on{display:block}
+.panel{background:var(--card);border-radius:24px;padding:18px;border:3px solid #fff;box-shadow:0 10px 30px #00000040}
+.center{text-align:center}
+h1{font-size:2rem;line-height:1.1;margin:.3rem 0 .2rem;font-weight:700}
+h2{font-size:1.5rem;margin:.2rem 0;font-weight:700}
+p{line-height:1.45;margin:.5rem 0}
+.big{font:inherit;font-size:1.25rem;font-weight:700;padding:14px 28px;border-radius:999px;border:3px solid #fff;
+  background:linear-gradient(#ff9dbb,var(--pink2));color:#fff;box-shadow:0 5px 0 var(--pinkdark);cursor:pointer;margin-top:10px}
+.big:active{transform:translateY(4px);box-shadow:0 1px 0 var(--pinkdark)}
+.big:focus-visible,.opt:focus-visible,input:focus-visible{outline:4px solid #ffe066;outline-offset:2px}
+.rules{text-align:left;margin:12px auto;padding-left:1.2rem;max-width:460px}
+.rules li{margin:6px 0;line-height:1.35}
+.axo{width:min(230px,60%);animation:bob 3s ease-in-out infinite}
+@keyframes bob{50%{transform:translateY(-10px) rotate(2deg)}}
+.passage{text-align:left;background:#ffffffcc;border-radius:16px;padding:12px 14px;font-size:1rem;line-height:1.5;max-height:52vh;overflow:auto;border:2px dashed var(--pink2)}
+.passage h3{margin:0 0 6px;font-size:1.1rem}
+.cd{font-size:2.2rem;font-weight:700;color:var(--pink2)}
+
+/* HUD */
+.hud{display:flex;justify-content:space-between;align-items:center;gap:6px;color:#fff;font-weight:600;flex-wrap:wrap}
+.chip{background:#00000066;padding:4px 11px;border-radius:999px;font-size:.92rem;white-space:nowrap}
+.mute{font:inherit;background:#00000066;color:#fff;border:0;border-radius:999px;padding:4px 11px;cursor:pointer}
+.tbar{height:18px;background:#00000055;border-radius:99px;overflow:hidden;margin:8px 0 4px;border:2px solid #fff}
+.tfill{height:100%;width:100%;background:#2ecc71}
+.tnum{text-align:right;color:#fff;font-weight:700;font-size:1.3rem;text-shadow:0 2px 0 #0006}
+
+/* stage */
+#stage{position:relative;margin-top:6px;min-height:470px}
+#answers{position:relative}
+#hints{position:relative;z-index:50}
+.hint{background:repeating-linear-gradient(45deg,#ffe066,#ffe066 12px,#ffd23f 12px,#ffd23f 24px);
+  border:3px solid #c0392b;color:#4a1d00;padding:8px 10px;border-radius:12px;margin-bottom:8px;
+  font-size:.95rem;font-weight:600;line-height:1.3;animation:flash .45s 6}
+@keyframes flash{50%{background:#ff6b6b;color:#fff}}
+.hint.done{background:#c8f7d4;border-color:#27ae60;color:#0b5a2a;animation:none}
+.hint.done::before{content:"✓ ";font-weight:700}
+#card .qn{font-size:.9rem;color:var(--pinkdark);font-weight:700}
+#card .qt{font-size:1.28rem;font-weight:600;line-height:1.3;margin-top:4px;min-height:3.4rem}
+#card.boss{border-color:#ff4d4d}
+.opts{display:grid;gap:10px;margin-top:12px}
+.opt{font:inherit;font-size:1.05rem;font-weight:600;text-align:left;padding:14px 16px;border-radius:16px;border:3px solid #fff;
+  background:linear-gradient(#ffc0d3,var(--pink));color:#4a0d25;box-shadow:0 4px 0 #c85a82;cursor:pointer;transition:transform .1s}
+.opt:active{transform:translateY(3px);box-shadow:none}
+.opt.good{background:var(--good);color:#fff;box-shadow:0 4px 0 #1b8f4d}
+.opts.swapping .opt{animation:wig .35s}
+@keyframes wig{30%{transform:translateX(-10px) rotate(-1deg)}70%{transform:translateX(10px) rotate(1deg)}}
+.typed{display:flex;gap:8px;margin-top:12px}
+.typed input{flex:1;min-width:0;font:inherit;font-size:1.2rem;padding:12px 14px;border-radius:14px;border:3px solid var(--pink2);background:#fff;color:var(--ink)}
+.typed button{font:inherit;font-weight:700;font-size:1.1rem;padding:0 18px;border-radius:14px;border:3px solid #fff;background:var(--pink2);color:#fff;cursor:pointer}
+body.panic #card{animation:shake .28s infinite}
+@keyframes shake{25%{transform:translateX(-3px)}75%{transform:translateX(3px)}}
+
+/* distractions */
+#layer{position:absolute;inset:0;pointer-events:none;overflow:hidden;z-index:10;border-radius:24px}
+#layer>*{pointer-events:auto}
+.blk{position:absolute;display:grid;place-items:center;cursor:grab;touch-action:none;user-select:none;-webkit-user-select:none;
+  filter:drop-shadow(0 10px 6px #00000066)}
+.blk.puff{width:140px;height:140px;font-size:110px;animation:wob 1s ease-in-out infinite alternate}
+.blk.puff.moved{animation:none}
+@keyframes wob{to{transform:rotate(8deg) scale(1.05)}}
+.blk.crab{width:92px;height:92px;font-size:76px;cursor:pointer}
+.pb{position:absolute;border-radius:50%;display:grid;place-items:center;font-weight:700;color:#0d6a92;font-size:.85rem;cursor:pointer;
+  background:radial-gradient(circle at 30% 28%,#ffffffee,#b9f4ffaa 55%,#4fc9e8aa);border:2px solid #fff;
+  animation:drift 2.4s ease-in-out infinite alternate;touch-action:manipulation}
+.pb.tough{border:4px solid var(--pink2)}
+@keyframes drift{to{transform:translate(10px,-8px)}}
+.pb.pop{animation:popb .2s forwards}
+@keyframes popb{to{transform:scale(1.7);opacity:0}}
+.ad{position:absolute;width:min(86%,310px);background:#fff;border:4px solid #ff3b3b;border-radius:10px;padding:14px 14px 12px;text-align:center;
+  font-weight:700;color:#111;box-shadow:0 0 0 4px #ffe500,0 14px 30px #00000088;animation:adb .5s infinite alternate;transition:left .15s,top .15s}
+@keyframes adb{to{box-shadow:0 0 0 4px #ff3b3b,0 14px 30px #00000088}}
+.ad p{margin:6px 0;font-size:1rem}
+.ad-t{font-size:1.1rem;color:#d00}
+.ad-x{position:absolute;top:-6px;right:-6px;width:32px;height:32px;display:grid;place-items:center;font-size:10px;color:#9a9a9a;cursor:pointer;touch-action:manipulation}
+.ad-btn{font:inherit;font-weight:700;font-size:1.1rem;background:#27ae60;color:#fff;border:0;padding:10px 16px;border-radius:8px;cursor:pointer}
+#mud{position:absolute;border-radius:24px;touch-action:none;cursor:crosshair}
+
+/* lock + new obstacles */
+.lock{position:absolute;inset:0;z-index:2;border-radius:16px;display:grid;place-items:center;text-align:center;font-weight:700;color:#fff;
+  background:repeating-linear-gradient(45deg,#000000a6,#000000a6 14px,#000000c0 14px,#000000c0 28px);cursor:not-allowed;padding:10px;min-height:70px}
+.lock.nudge{animation:shake .3s 2}
+.hint.nudge{animation:flash .3s 3}
+.hint.info{background:#dff3ff;border-color:#2980b9;color:#0b3a5a;animation:none}
+.hint.info::before{content:"ℹ️ can't be stopped: ";font-weight:700}
+.shk{animation:shake .3s 2}
+.shell{position:absolute;width:64px;height:64px;display:grid;place-items:center;font-size:50px;cursor:pointer;user-select:none;-webkit-user-select:none;
+  animation:drift 2.2s ease-in-out infinite alternate;touch-action:manipulation}
+.shell b{position:absolute;font-size:1.3rem;color:#fff;text-shadow:0 0 4px #000,0 0 4px #000,0 0 6px #000}
+.shell.ok{opacity:.3;animation:none}
+.shell.gone{transition:.25s;transform:scale(0);opacity:0}
+.clam{position:absolute;display:flex;flex-direction:column;align-items:center;justify-content:center;background:linear-gradient(#ebc9da,#b98aa6);
+  border:4px solid #7b4f69;border-radius:26px;touch-action:none;user-select:none;-webkit-user-select:none;color:#fff;font-weight:700;cursor:pointer;box-shadow:0 10px 20px #0006}
+.clam-i{font-size:56px;line-height:1}
+.clam-bar{height:12px;width:80%;background:#0000004d;border-radius:99px;overflow:hidden;margin:4px 0}
+.clam-bar i{display:block;height:100%;width:0;background:#ffd23f}
+.clam.open{transition:.4s;transform:scale(1.3);opacity:0}
+.cookie{position:absolute;left:6px;right:6px;background:#fff;border:3px solid #6b4a2b;border-radius:14px;padding:10px 12px;color:#222;font-weight:600;box-shadow:0 10px 24px #0008}
+.ck-t{font-weight:700;margin-bottom:4px}
+.ck-r{display:flex;justify-content:space-between;align-items:center;padding:3px 0}
+.sw{width:50px;height:28px;border-radius:99px;border:0;background:#bbb;position:relative;cursor:pointer;flex:none}
+.sw::after{content:"";position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:50%;background:#fff;transition:left .15s}
+.sw.on{background:#27ae60}.sw.on::after{left:25px}
+.ck-b{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:6px}
+.ck-acc{font:inherit;font-weight:700;font-size:1.05rem;background:#27ae60;color:#fff;border:0;border-radius:10px;padding:10px 16px;cursor:pointer;flex:1}
+.ck-save{font:inherit;font-size:.85rem;background:none;border:0;color:#888;text-decoration:underline;padding:12px 10px;cursor:pointer}
+.ck-m{font-size:.85rem;color:#b00;min-height:1.1em;margin-top:2px}
+.ink{position:absolute;border-radius:50% 45% 55% 50%;background:radial-gradient(circle,#0b0b1f 55%,#0b0b1fcc 75%,#0b0b1f00);pointer-events:none!important;animation:inkfade 2.2s forwards}
+@keyframes inkfade{0%{transform:scale(.3);opacity:0}15%{transform:scale(1);opacity:1}70%{opacity:.95}100%{opacity:0}}
+#card.whirl{animation:whirl 2.6s ease-in-out infinite}
+@keyframes whirl{25%{transform:rotate(5deg) scale(.97)}75%{transform:rotate(-5deg) scale(1.03)}}
+
+/* result screens */
+.stat{display:flex;justify-content:center;gap:8px;flex-wrap:wrap;margin:10px 0}
+.stat span{background:#ffe9f0;border:2px solid var(--pink2);border-radius:999px;padding:4px 12px;font-weight:600}
+.fail h2{color:#d62d4f}
+.win h2{color:#1b8f4d}
+.fx{position:fixed;font-size:2rem;pointer-events:none;z-index:60;animation:fx 1.6s ease-out forwards}
+@keyframes fx{to{transform:translate(var(--dx),var(--dy)) rotate(360deg);opacity:0}}
+@media (prefers-reduced-motion: reduce){
+  .bub,.axo,.blk.puff{animation:none}
+}
+@media (max-width:420px){
+  h1{font-size:1.7rem}
+  #card .qt{font-size:1.15rem}
+}
+</style>
+</head>
+<body>
+<div id="bgb" aria-hidden="true"></div>
+<div id="app">
+
+  <!-- START -->
+  <section id="s-start" class="screen on">
+    <div class="panel center">
+      <div id="mascot1"></div>
+      <h1>Lilo's Deep-Pond Quiz</h1>
+      <p>10 sneaky questions about <b>My Exotic Animal Friend, Lilo</b>. Surviving takes a sharp memory and steady hands.</p>
+      <ul class="rules">
+        <li>You read the story <b>once</b> before each run. Then it vanishes.</li>
+        <li>Every question has a <b>short countdown</b>.</li>
+        <li>One wrong answer, or one timeout, sends you back to <b>Question 1</b>. No checkpoints.</li>
+        <li>Pond junk blocks the question. <b>The answers stay locked until you clear every obstacle.</b> Follow the yellow warning signs.</li>
+        <li>A few obstacles <b>can't be stopped</b> (blue signs). You just have to survive them.</li>
+        <li>Answer positions are shuffled on every run.</li>
+      </ul>
+      <button class="big" id="btn-start">Dive in!</button>
+      <p style="font-size:.85rem;opacity:.75">Sound on: ticking gets louder near the end.</p>
+    </div>
+  </section>
+
+  <!-- STUDY -->
+  <section id="s-study" class="screen">
+    <div class="panel center">
+      <h2 id="study-title">Read carefully!</h2>
+      <div class="cd" id="study-cd">40</div>
+      <div class="passage" id="passage">
+        <h3>MY EXOTIC ANIMAL FRIEND, LILO.</h3>
+        <p>My most special exotic pet is an axolotl named Lilo, a unique aquatic creature often called the "Mexican walking fish." Even though it has "fish" in its nickname, Lilo is actually an amphibian from the freshwater lakes near Mexico City. Unlike regular frogs that grow up and move onto land, Lilo spends its entire life underwater in my home aquarium, making it a truly cool and unusual friend to keep.</p>
+        <p>Looking at Lilo is like having a cute, miniature dragon living in my room. It has a flat head, tiny dark eyes, and a wide mouth that always looks like a sweet, permanent smile. Six fluffy pink gills branch out from its head to help it breathe, while its smooth body and four small legs help it walk along the tank floor. Lilo is a very calm pet that loves floating gracefully, resting on smooth rocks, and quickly vacuuming up worms at mealtime. The coolest part is that it can even regrow its own legs and tail if they get hurt, which makes my smiling little friend feel totally magical!</p>
+      </div>
+      <button class="big" id="btn-ready">I'm ready, start the quiz!</button>
+    </div>
+  </section>
+
+  <!-- GAME -->
+  <section id="s-game" class="screen">
+    <div class="hud">
+      <span class="chip" id="h-q">Q 1/10</span>
+      <span class="chip" id="h-a">Run #1</span>
+      <span class="chip" id="h-b">Best: 0</span>
+      <button class="mute" id="btn-mute" aria-label="Toggle sound">🔊</button>
+    </div>
+    <div class="tbar"><div class="tfill" id="tfill"></div></div>
+    <div class="tnum" id="tnum">0.0s</div>
+    <div id="stage">
+      <div id="hints" aria-live="polite"></div>
+      <div id="card" class="panel">
+        <div class="qn" id="qn"></div>
+        <div class="qt" id="qt"></div>
+      </div>
+      <div id="answers"></div>
+      <div id="layer"></div>
+    </div>
+  </section>
+
+  <!-- FAIL -->
+  <section id="s-fail" class="screen">
+    <div class="panel center fail">
+      <div id="mascot2"></div>
+      <h2 id="f-title">Splash!</h2>
+      <p id="f-msg"></p>
+      <div class="stat"><span id="f-reach"></span><span id="f-runs"></span><span id="f-best"></span></div>
+      <p>No checkpoints. Back to the very beginning.</p>
+      <button class="big" id="btn-retry">Start over from Question 1</button>
+    </div>
+  </section>
+
+  <!-- WIN -->
+  <section id="s-win" class="screen">
+    <div class="panel center win">
+      <div id="mascot3"></div>
+      <h2>You did it! Axolotl Master!</h2>
+      <p>You survived every question, every blocker and every pop-up. Lilo is very proud.</p>
+      <div class="stat"><span id="w-runs"></span><span id="w-time"></span></div>
+      <button class="big" id="btn-again">Play again</button>
+    </div>
+  </section>
+</div>
+
+<script>
+(function(){
+"use strict";
+var $=function(s){return document.querySelector(s)};
+var el=function(t,c,h){var e=document.createElement(t);if(c)e.className=c;if(h!==undefined)e.innerHTML=h;return e};
+var rnd=function(a,b){return a+Math.random()*(b-a)};
+var pick=function(a){return a[Math.floor(Math.random()*a.length)]};
+function shuffle(a){a=a.slice();for(var i=a.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1));var t=a[i];a[i]=a[j];a[j]=t}return a}
+
+/* ---------- mascot ---------- */
+var AXO='<svg class="axo" viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Lilo the axolotl">'+
+'<g fill="#ff5d8f">'+
+'<ellipse cx="38" cy="48" rx="7" ry="24" transform="rotate(-38 38 48)"/><ellipse cx="26" cy="74" rx="7" ry="24" transform="rotate(-82 26 74)"/><ellipse cx="38" cy="100" rx="7" ry="24" transform="rotate(-122 38 100)"/>'+
+'<ellipse cx="162" cy="48" rx="7" ry="24" transform="rotate(38 162 48)"/><ellipse cx="174" cy="74" rx="7" ry="24" transform="rotate(82 174 74)"/><ellipse cx="162" cy="100" rx="7" ry="24" transform="rotate(122 162 100)"/></g>'+
+'<g fill="#ff9dbb"><circle cx="24" cy="30" r="6"/><circle cx="9" cy="72" r="6"/><circle cx="24" cy="116" r="6"/><circle cx="176" cy="30" r="6"/><circle cx="191" cy="72" r="6"/><circle cx="176" cy="116" r="6"/></g>'+
+'<ellipse cx="100" cy="78" rx="58" ry="46" fill="#ffc2d4"/>'+
+'<circle cx="76" cy="68" r="5.5" fill="#2b1b2b"/><circle cx="124" cy="68" r="5.5" fill="#2b1b2b"/>'+
+'<circle cx="78" cy="66" r="1.8" fill="#fff"/><circle cx="126" cy="66" r="1.8" fill="#fff"/>'+
+'<circle cx="62" cy="88" r="8" fill="#ff8fb1" opacity=".7"/><circle cx="138" cy="88" r="8" fill="#ff8fb1" opacity=".7"/>'+
+'<path d="M72 90 Q100 114 128 90" fill="none" stroke="#b83a66" stroke-width="4" stroke-linecap="round"/></svg>';
+$("#mascot1").innerHTML=AXO;$("#mascot2").innerHTML=AXO;$("#mascot3").innerHTML=AXO;
+
+/* ---------- background bubbles ---------- */
+(function(){var bg=$("#bgb");for(var i=0;i<22;i++){var b=el("span","bub");var s=rnd(10,46);
+ b.style.width=b.style.height=s+"px";b.style.left=rnd(0,100)+"%";b.style.animationDuration=rnd(9,22)+"s";b.style.animationDelay=(-rnd(0,20))+"s";bg.appendChild(b)}})();
+
+/* ---------- sound ---------- */
+var ac=null,muted=false;
+function beep(f,d,type,v){if(muted)return;try{ac=ac||new (window.AudioContext||window.webkitAudioContext)();var o=ac.createOscillator(),g=ac.createGain();
+ o.type=type||"sine";o.frequency.value=f;g.gain.value=v||0.05;o.connect(g);g.connect(ac.destination);o.start();o.stop(ac.currentTime+(d||0.12))}catch(e){}}
+$("#btn-mute").addEventListener("click",function(){muted=!muted;this.textContent=muted?"🔇":"🔊"});
+
+/* ---------- questions ---------- */
+var Q=[
+ {q:"Where does Lilo's kind of animal originally live?",
+  o:["The salty coast of Mexico","Freshwater lakes near Mexico City","The rivers of the Amazon","Mountain streams in Peru"],c:"Freshwater lakes near Mexico City"},
+ {q:"Lilo is called the \"Mexican walking fish\", but it is NOT a fish. Type the ONE word for what it really is:",
+  type:"text",ans:["amphibian"],hint:"one word, 9 letters"},
+ {q:"How many gills and legs does Lilo have in TOTAL?",
+  o:["8","9","10","12"],c:"10"},
+ {q:"Which description of Lilo's gills matches the story?",
+  o:["Four sleek red gills","Six fluffy pink gills","Two big pink gills","Six smooth purple gills"],c:"Six fluffy pink gills"},
+ {q:"What does Lilo do that regular frogs DO NOT do?",
+  o:["Moves onto land when grown","Hibernates all winter","Lives in an outdoor pond","Spends its whole life underwater"],c:"Spends its whole life underwater"},
+ {q:"The author says looking at Lilo is like having which creature in the room?",
+  o:["A baby shark","A miniature dragon","A small unicorn","A tiny dinosaur"],c:"A miniature dragon"},
+ {q:"Which of these is NOT mentioned as something Lilo loves to do?",
+  o:["Floating gracefully","Resting on smooth rocks","Digging tunnels in the sand","Vacuuming up worms"],c:"Digging tunnels in the sand"},
+ {q:"How are Lilo's eyes described?",
+  o:["Big and golden","Tiny and dark","Round and bright blue","Small and pink"],c:"Tiny and dark"},
+ {q:"Where does Lilo live, according to the author?",
+  o:["In a backyard pond","In a school lab tank","In a home aquarium","In a bathtub"],c:"In a home aquarium"},
+ {q:"FINAL BOSS: Which statement is TRUE?",
+  o:["Lilo grows up and moves onto land","Lilo's smile only appears sometimes","Lilo can regrow its legs and tail","Lilo has exactly four gills"],c:"Lilo can regrow its legs and tail",boss:true}
+];
+var FAIL_WRONG=["Splash! Wrong answer. The pond swallowed your progress.","Nope! Back to the start, little swimmer.","Wrong! Lilo is quietly disappointed. 🥲","Ouch. Question 1 is waiting for you. Again."];
+var FAIL_TIME=["Time's up! The tide dragged you back.","Too slow! Even Lilo floats faster than that.","Tick, tock... the pond drained your progress."];
+
+/* ---------- state ---------- */
+var S={idx:0,runs:0,best:0,pending:0,locked:false,raf:0,deadline:0,cleanups:[],t0:0,studyIv:0,swapIv:0};
+try{var b=parseInt(localStorage.getItem("lilo_best")||"0",10);if(b>0)S.best=b}catch(e){}
+
+function show(id){var all=document.querySelectorAll(".screen");for(var i=0;i<all.length;i++)all[i].classList.remove("on");$("#s-"+id).classList.add("on");window.scrollTo(0,0)}
+
+/* ---------- flow ---------- */
+$("#btn-start").addEventListener("click",function(){beep(520,.1);startRun()});
+$("#btn-retry").addEventListener("click",function(){beep(520,.1);startRun()});
+$("#btn-again").addEventListener("click",function(){S.runs=0;startRun()});
+$("#btn-ready").addEventListener("click",function(){beginQuiz()});
+
+function startRun(){
+  S.runs++;S.idx=0;
+  var secs=S.runs===1?200:20;
+  $("#study-title").textContent=S.runs===1?"Read carefully! You have about 3 minutes.":"Run #"+S.runs+": a quick refresher. Read fast!";
+  var left=secs;var fmt=function(n){return n>=60?Math.floor(n/60)+":"+("0"+(n%60)).slice(-2):n+"s"};$("#study-cd").textContent=fmt(left);
+  show("study");clearInterval(S.studyIv);
+  S.studyIv=setInterval(function(){left--;$("#study-cd").textContent=fmt(left);if(left<=5&&left>0)beep(700,.06);if(left<=0)beginQuiz()},1000);
+}
+function beginQuiz(){
+  clearInterval(S.studyIv);if(S.idx===0&&!S.t0)S.t0=Date.now();
+  show("game");loadQuestion();
+}
+
+/* ---------- distraction helpers ---------- */
+var stage=$("#stage"),layer=$("#layer"),hints=$("#hints"),card=$("#card"),answers=$("#answers");
+function rel(e){var s=stage.getBoundingClientRect(),r=e.getBoundingClientRect();return{x:r.left-s.left,y:r.top-s.top,w:r.width,h:r.height}}
+function addHint(html,must){var r=el("div","hint"+(must?"":" info"),html);r._must=!!must;hints.appendChild(r);return r}
+function unlock(){S.pending=0;var l=answers.querySelector(".lock");if(l){l.remove();beep(740,.1,"triangle");setTimeout(function(){beep(988,.12,"triangle")},100)}}
+function solve(row){if(!row||row.classList.contains("done")||row.classList.contains("info"))return;row.classList.add("done");
+  if(row._must){S.pending--;if(S.pending<=0)unlock()}}
+function nudge(){beep(160,.12,"sawtooth",.05);var l=answers.querySelector(".lock");
+  if(l){l.classList.remove("nudge");void l.offsetWidth;l.classList.add("nudge")}
+  [].slice.call(hints.querySelectorAll(".hint:not(.done):not(.info)")).forEach(function(h){h.classList.remove("nudge");void h.offsetWidth;h.classList.add("nudge")})}
+function cleanup(){while(S.cleanups.length){try{S.cleanups.pop()()}catch(e){}}S.pending=0;layer.innerHTML="";hints.innerHTML="";answers.innerHTML="";document.body.classList.remove("panic")}
+
+var DIST={
+ puff:{must:true,hint:"🐡 <b>A pufferfish is blocking the question!</b> <u>DRAG</u> it out of the way.",
+  init:function(row){
+   var c=rel(card),W=layer.clientWidth,H=layer.clientHeight;
+   var b=el("div","blk puff","🐡");var sx=c.x+c.w/2-70,sy=c.y+Math.max(0,c.h/2-70);
+   b.style.left=sx+"px";b.style.top=sy+"px";layer.appendChild(b);
+   var dx=0,dy=0,drag=false;
+   b.addEventListener("pointerdown",function(e){drag=true;b.setPointerCapture(e.pointerId);var r=b.getBoundingClientRect();dx=e.clientX-r.left;dy=e.clientY-r.top;b.classList.add("moved");e.preventDefault()});
+   b.addEventListener("pointermove",function(e){if(!drag)return;var s=layer.getBoundingClientRect();
+     var x=Math.max(0,Math.min(W-140,e.clientX-s.left-dx)),y=Math.max(0,Math.min(H-140,e.clientY-s.top-dy));
+     b.style.left=x+"px";b.style.top=y+"px";
+     if(Math.hypot(x-sx,y-sy)>150)solve(row)});
+   var up=function(){drag=false};b.addEventListener("pointerup",up);b.addEventListener("pointercancel",up);
+  }},
+ bubbles:{must:true,hint:"🫧 <b>Bubbles are covering the answers!</b> <u>TAP</u> every bubble to pop it. Pink-ringed ones need 2 taps.",
+  init:function(row){
+   var a=rel(answers),n=9,left=n,W=layer.clientWidth;
+   for(var i=0;i<n;i++){(function(){
+     var s=rnd(64,92),b=el("div","pb");var hp=Math.random()<.35?2:1;if(hp===2)b.classList.add("tough");
+     b.style.width=b.style.height=s+"px";
+     b.style.left=Math.max(0,Math.min(W-s,a.x+rnd(-4,a.w-s+4)))+"px";
+     b.style.top=(a.y+rnd(-8,Math.max(10,a.h-s+8)))+"px";
+     b.style.animationDelay=(-rnd(0,2))+"s";
+     if(hp===2)b.textContent="x2";
+     b.addEventListener("click",function(){hp--;beep(900,.05,"triangle");
+       if(hp<=0){b.classList.add("pop");setTimeout(function(){b.remove()},200);left--;if(left<=0)solve(row)}
+       else{b.classList.remove("tough");b.textContent=""}});
+     layer.appendChild(b)})()}
+  }},
+ mud:{must:true,hint:"🟤 <b>Mud covers the question!</b> <u>RUB / SWIPE</u> over the mud to wipe it clean.",
+  init:function(row){
+   var c=rel(card),cv=el("canvas");cv.id="mud";cv.width=Math.round(c.w);cv.height=Math.round(c.h);
+   cv.style.left=c.x+"px";cv.style.top=c.y+"px";cv.style.width=c.w+"px";cv.style.height=c.h+"px";layer.appendChild(cv);
+   var g=cv.getContext("2d");g.fillStyle="#6b4a2b";g.fillRect(0,0,cv.width,cv.height);
+   for(var i=0;i<70;i++){g.fillStyle=pick(["#7d5a36","#573a20","#8a6840","#4a3019"]);g.beginPath();g.arc(rnd(0,cv.width),rnd(0,cv.height),rnd(8,30),0,7);g.fill()}
+   g.fillStyle="#ffffff40";g.font="600 16px Fredoka,sans-serif";g.fillText("(thick pond mud)",12,24);
+   var down=false,lx=0,ly=0;
+   function pos(e){var r=cv.getBoundingClientRect();return[e.clientX-r.left,e.clientY-r.top]}
+   cv.addEventListener("pointerdown",function(e){down=true;cv.setPointerCapture(e.pointerId);var p=pos(e);lx=p[0];ly=p[1];wipe(lx,ly,lx,ly);e.preventDefault()});
+   cv.addEventListener("pointermove",function(e){if(!down)return;var p=pos(e);wipe(lx,ly,p[0],p[1]);lx=p[0];ly=p[1]});
+   var up=function(){down=false};cv.addEventListener("pointerup",up);cv.addEventListener("pointercancel",up);
+   function wipe(x1,y1,x2,y2){g.globalCompositeOperation="destination-out";g.lineCap="round";g.lineWidth=46;g.beginPath();g.moveTo(x1,y1);g.lineTo(x2,y2);g.stroke();g.globalCompositeOperation="source-over"}
+   var iv=setInterval(function(){var clear=0,tot=0;
+     for(var x=6;x<cv.width;x+=Math.max(8,cv.width/24)){for(var y=6;y<cv.height;y+=Math.max(8,cv.height/8)){tot++;if(g.getImageData(x,y,1,1).data[3]<30)clear++}}
+     if(tot&&clear/tot>0.72){solve(row);cv.style.transition="opacity .3s";cv.style.opacity="0";cv.style.pointerEvents="none";clearInterval(iv)}},450);
+   S.cleanups.push(function(){clearInterval(iv)});
+  }},
+ crab:{must:true,hint:"🦀 <b>A crab keeps crawling over the answers!</b> <u>TAP the crab 4 times</u> to scare it off.",
+  init:function(row){
+   var a=rel(answers),W=layer.clientWidth,x=a.x,y=a.y+Math.max(0,a.h/2-46),vx=2.4,hits=0,t=0,raf=0,done=false;
+   var b=el("div","blk crab","🦀");layer.appendChild(b);
+   function loop(){if(done)return;t+=.08;x+=vx;if(x<0){x=0;vx=Math.abs(vx)}if(x>W-92){x=W-92;vx=-Math.abs(vx)}
+     b.style.transform="translate("+x+"px,"+(y+Math.sin(t)*14)+"px)";raf=requestAnimationFrame(loop)}
+   b.style.left="0px";b.style.top="0px";loop();
+   b.addEventListener("pointerdown",function(e){e.preventDefault();hits++;beep(300,.08,"square",.04);vx=(vx>0?1:-1)*(Math.abs(vx)+1.4);
+     y=a.y+rnd(-10,Math.max(0,a.h-80));
+     if(hits>=4){done=true;cancelAnimationFrame(raf);b.style.transition="transform .5s,opacity .5s";b.style.transform="translate("+x+"px,-200px) scale(.2)";b.style.opacity="0";setTimeout(function(){b.remove()},500);solve(row)}});
+   S.cleanups.push(function(){done=true;cancelAnimationFrame(raf)});
+  }},
+ ad:{must:true,hint:"🎰 <b>A fake pop-up is in the way!</b> Find and tap the <u>tiny ✕</u> to close it. Do NOT press the big button!",
+  init:function(row){
+   var c=rel(card),a=rel(answers),W=layer.clientWidth,H=layer.clientHeight;
+   var b=el("div","ad",'<div class="ad-x" role="button" aria-label="Close pop-up">✕</div><div class="ad-t">🎉 CONGRATULATIONS!! 🎉</div><p>You are visitor #1,000,000!<br>Claim your FREE axolotl NOW!!!</p><button class="ad-btn">CLAIM NOW</button>');
+   layer.appendChild(b);
+   function place(){var w=b.offsetWidth,h=b.offsetHeight;b.style.left=Math.max(0,Math.min(W-w,rnd(0,W-w)))+"px";b.style.top=Math.max(0,Math.min(H-h,c.y+rnd(10,Math.max(20,c.h*.9))))+"px"}
+   b.style.left=Math.max(0,(W-b.offsetWidth)/2)+"px";b.style.top=(c.y+c.h*.45)+"px";
+   b.querySelector(".ad-btn").addEventListener("click",function(){beep(200,.2,"sawtooth",.04);this.textContent=pick(["NICE TRY!","WRONG BUTTON","CLICK ME AGAIN","FREE!!!"]);place()});
+   b.querySelector(".ad-x").addEventListener("click",function(){b.remove();solve(row);beep(800,.08,"triangle")});
+  }},
+ shells:{must:true,hint:"🐚 <b>Numbered shells block the way!</b> Tap them in order <u>1 → 2 → 3 → 4</u>. One wrong tap and everything resets and moves!",
+  init:function(row){
+   var c=rel(card),a=rel(answers),W=layer.clientWidth,H=layer.clientHeight;
+   var yMin=Math.max(0,c.y+8),yMax=Math.max(yMin+10,Math.min(H-70,a.y+a.h-64));
+   var items=[],next=1,n=4;
+   function spot(k){var tries=0,x,y,ok;do{x=rnd(0,W-64);y=rnd(yMin,yMax);ok=true;for(var j=0;j<k;j++){if(Math.hypot(items[j]._x-x,items[j]._y-y)<80){ok=false;break}}tries++}while(!ok&&tries<40);return[x,y]}
+   function layout(){for(var q=0;q<n;q++){var p=spot(q);items[q]._x=p[0];items[q]._y=p[1];items[q].style.left=p[0]+"px";items[q].style.top=p[1]+"px"}}
+   for(var k=0;k<n;k++){(function(num){
+     var s=el("div","shell","🐚<b>"+num+"</b>");items.push(s);
+     s.addEventListener("click",function(){
+       if(s.classList.contains("ok"))return;
+       if(num===next){s.classList.add("ok");next++;beep(500+num*120,.07,"triangle");
+         if(next>n){items.forEach(function(x){x.classList.add("gone")});setTimeout(function(){items.forEach(function(x){x.remove()})},250);solve(row)}}
+       else{next=1;items.forEach(function(x){x.classList.remove("ok")});beep(150,.18,"sawtooth",.05);layout()}});
+     layer.appendChild(s)})(k+1)}
+   layout();
+  }},
+ clam:{must:true,hint:"🦪 <b>A giant clam is clamped shut over the answers!</b> <u>PRESS AND HOLD</u> it for 2 seconds. Let go early and it snaps shut again!",
+  init:function(row){
+   var a=rel(answers),W=layer.clientWidth,H=layer.clientHeight,w=Math.min(W-10,260),h=130;
+   var b=el("div","clam",'<div class="clam-i">🦪</div><div class="clam-bar"><i></i></div><small>HOLD ME</small>');
+   b.style.width=w+"px";b.style.height=h+"px";b.style.left=((W-w)/2)+"px";b.style.top=Math.max(0,Math.min(H-h,a.y+a.h/2-h/2))+"px";layer.appendChild(b);
+   var bar=b.querySelector("i"),t0=0,iv=0,done=false;
+   function stop(){if(iv){clearInterval(iv);iv=0}
+     if(!done){bar.style.width="0%";if(t0){b.classList.remove("shk");void b.offsetWidth;b.classList.add("shk");beep(170,.12,"square",.04)}t0=0}}
+   b.addEventListener("pointerdown",function(e){if(done)return;e.preventDefault();try{b.setPointerCapture(e.pointerId)}catch(x){}
+     t0=performance.now();clearInterval(iv);
+     iv=setInterval(function(){var p=(performance.now()-t0)/2000;bar.style.width=Math.min(100,p*100)+"%";
+       if(p>=1){done=true;clearInterval(iv);iv=0;b.classList.add("open");setTimeout(function(){b.remove()},400);beep(880,.15,"triangle");solve(row)}},30)});
+   ["pointerup","pointercancel","pointerleave"].forEach(function(ev){b.addEventListener(ev,stop)});
+   b.addEventListener("contextmenu",function(e){e.preventDefault()});
+   S.cleanups.push(function(){clearInterval(iv)});
+  }},
+ cookie:{must:true,hint:"🍪 <b>Cookie banner!</b> Switch <u>all 3 toggles OFF</u>, then press <u>save</u>. (They all start ON, and ACCEPT ALL is a trap.)",
+  init:function(row){
+   var a=rel(answers),H=layer.clientHeight;
+   var sw='<button class="sw on" role="switch" aria-checked="true" aria-label="toggle"></button>';
+   var b=el("div","cookie",'<div class="ck-t">🍪 We value your privacy</div>'+
+     '<div class="ck-r"><span>Tracking cookies</span>'+sw+'</div><div class="ck-r"><span>Marketing cookies</span>'+sw+'</div><div class="ck-r"><span>Cookies for cookies</span>'+sw+'</div>'+
+     '<div class="ck-b"><button class="ck-acc">ACCEPT ALL</button><button class="ck-save">save</button></div><div class="ck-m"></div>');
+   layer.appendChild(b);
+   b.style.top=Math.max(0,Math.min(H-b.offsetHeight,a.y-6))+"px";
+   var sws=[].slice.call(b.querySelectorAll(".sw")),m=b.querySelector(".ck-m");
+   function sync(){sws.forEach(function(x){x.setAttribute("aria-checked",x.classList.contains("on")?"true":"false")})}
+   sws.forEach(function(x){x.addEventListener("click",function(){x.classList.toggle("on");sync();beep(420,.05,"triangle")})});
+   b.querySelector(".ck-acc").addEventListener("click",function(){sws.forEach(function(x){x.classList.add("on")});sync();
+     m.textContent=pick(["Thanks! Everything is ON again. 😈","Great choice! (not really)","All cookies accepted!"]);beep(200,.15,"sawtooth",.04)});
+   b.querySelector(".ck-save").addEventListener("click",function(){
+     var on=sws.some(function(x){return x.classList.contains("on")});
+     if(on){m.textContent="Some switches are still ON!";b.classList.remove("shk");void b.offsetWidth;b.classList.add("shk");beep(160,.15,"square",.05)}
+     else{b.remove();solve(row);beep(800,.08,"triangle")}});
+  }},
+ ink:{must:false,hint:"🦑 <b>A squid keeps squirting ink!</b> It splashes over the question now and then. Read fast!",
+  init:function(row){
+   var c=rel(card);
+   function splash(){for(var i=0;i<3;i++){var s=el("div","ink");var d=rnd(110,210);s.style.width=s.style.height=d+"px";
+     s.style.left=rnd(-20,layer.clientWidth-d+20)+"px";s.style.top=(c.y+rnd(-10,Math.max(10,c.h-d/2)))+"px";layer.appendChild(s);
+     (function(z){setTimeout(function(){z.remove()},2300)})(s)}beep(120,.2,"sawtooth",.03)}
+   var t=setTimeout(splash,1200),iv=setInterval(splash,3600);
+   S.cleanups.push(function(){clearTimeout(t);clearInterval(iv)});
+  }},
+ whirl:{must:false,hint:"🌀 <b>A whirlpool makes the question wobble and spin!</b> Stay focused.",
+  init:function(row){card.classList.add("whirl");S.cleanups.push(function(){card.classList.remove("whirl")})}},
+ swap:{must:false,hint:"🌊 <b>The current is shuffling the answers!</b> They keep changing places. Stay sharp!",
+  init:function(row){
+   var iv=setInterval(function(){var box=answers.querySelector(".opts");if(!box||S.locked)return;
+     var kids=shuffle([].slice.call(box.children));box.classList.remove("swapping");void box.offsetWidth;box.classList.add("swapping");
+     kids.forEach(function(k){box.appendChild(k)})},2300);
+   S.cleanups.push(function(){clearInterval(iv)});
+  }}
+};
+
+function pickDistractions(i,q){
+  var mustPool=["puff","bubbles","mud","crab","ad","shells","clam","cookie"];
+  var unPool=q.type==="text"?["ink","whirl"]:["swap","ink","whirl"];
+  var nm=i<4?1:(i<8?2:3),nu=i<2?0:(q.boss?2:1);
+  var m=i===0?["puff"]:shuffle(mustPool).slice(0,nm);
+  return m.concat(shuffle(unPool).slice(0,nu));
+}
+
+/* ---------- question loop ---------- */
+function loadQuestion(){
+  cancelAnimationFrame(S.raf);cleanup();S.locked=false;
+  var i=S.idx,q=Q[i];
+  $("#h-q").textContent="Q "+(i+1)+"/"+Q.length;$("#h-a").textContent="Run #"+S.runs;$("#h-b").textContent="Best: "+S.best;
+  $("#qn").textContent=q.boss?"FINAL BOSS":"Question "+(i+1)+" of "+Q.length;
+  $("#qt").textContent=q.q;card.classList.toggle("boss",!!q.boss);
+
+  if(q.type==="text"){
+    var wrap=el("div","typed");var inp=el("input");inp.type="text";inp.placeholder="Type your answer...";inp.autocomplete="off";inp.autocapitalize="off";inp.setAttribute("aria-label","Your answer");
+    var btn=el("button","","GO");wrap.appendChild(inp);wrap.appendChild(btn);answers.appendChild(wrap);
+    var submit=function(){if(S.locked)return;if(S.pending>0){nudge();return}var v=inp.value.trim().toLowerCase();if(!v)return;
+      if(q.ans.indexOf(v)>-1)right(btn);else fail("wrong")};
+    btn.addEventListener("click",submit);inp.addEventListener("keydown",function(e){if(e.key==="Enter")submit()});
+  }else{
+    var box=el("div","opts");
+    shuffle(q.o).forEach(function(t){var b=el("button","opt");b.textContent=t;
+      b.addEventListener("click",function(){if(S.locked)return;if(S.pending>0){nudge();return}if(t===q.c)right(b);else fail("wrong")});box.appendChild(b)});
+    answers.appendChild(box);
+  }
+
+  var names=pickDistractions(i,q),rows=[],must=0;
+  names.forEach(function(n){var m=!!DIST[n].must;if(m)must++;rows.push(addHint(DIST[n].hint,m))});
+  S.pending=must;
+  if(must>0){var lk=el("div","lock","🔒 Locked! Clear every obstacle first.");lk.addEventListener("click",nudge);answers.appendChild(lk)}
+  void stage.offsetHeight;
+  names.forEach(function(n,k){DIST[n].init(rows[k])});
+  if(names.length)beep(440,.15,"square",.04);
+
+  var unav=names.length-must;
+  var secs=Math.round(9+3.5*must+2*unav+(q.type==="text"?4:0));
+  startTimer(secs);
+}
+
+function startTimer(secs){
+  var dur=secs*1000,last=-1;S.deadline=performance.now()+dur;
+  var fill=$("#tfill"),num=$("#tnum");
+  function loop(t){
+    var left=S.deadline-t;
+    if(left<=0){fail("time");return}
+    var f=left/dur;fill.style.width=(f*100)+"%";fill.style.background="hsl("+Math.round(120*f)+",85%,50%)";
+    num.textContent=(left/1000).toFixed(1)+"s";
+    var s=Math.ceil(left/1000);
+    if(s!==last){last=s;if(s<=5)beep(s<=2?900:650,.07,"square",.04)}
+    document.body.classList.toggle("panic",left<3500);
+    S.raf=requestAnimationFrame(loop);
+  }
+  S.raf=requestAnimationFrame(loop);
+}
+
+function right(btn){
+  S.locked=true;cancelAnimationFrame(S.raf);document.body.classList.remove("panic");
+  btn.classList.add("good");beep(660,.1,"triangle");setTimeout(function(){beep(880,.14,"triangle")},110);
+  setTimeout(function(){S.idx++;if(S.idx>=Q.length)win();else loadQuestion()},650);
+}
+
+function fail(reason){
+  if(S.locked&&reason!=="time")return;
+  S.locked=true;cancelAnimationFrame(S.raf);
+  var reached=S.idx+1;var done=S.idx;
+  if(done>S.best){S.best=done;try{localStorage.setItem("lilo_best",String(S.best))}catch(e){}}
+  cleanup();
+  beep(180,.35,"sawtooth",.07);
+  $("#f-title").textContent=reason==="time"?"Out of time!":"Wrong answer!";
+  $("#f-msg").textContent=pick(reason==="time"?FAIL_TIME:FAIL_WRONG);
+  $("#f-reach").textContent="Failed on Question "+reached;
+  $("#f-runs").textContent="Run #"+S.runs;
+  $("#f-best").textContent="Best streak: "+S.best;
+  S.t0=S.t0||Date.now();
+  show("fail");
+}
+
+function win(){
+  cleanup();var sec=Math.round((Date.now()-S.t0)/1000);
+  $("#w-runs").textContent="Runs: "+S.runs;
+  $("#w-time").textContent="Total time: "+Math.floor(sec/60)+"m "+(sec%60)+"s";
+  S.best=Q.length;try{localStorage.setItem("lilo_best",String(S.best))}catch(e){}
+  show("win");S.t0=0;
+  [660,784,988,1318].forEach(function(f,k){setTimeout(function(){beep(f,.2,"triangle",.06)},k*140)});
+  var em=["🫧","💖","✨","🎉","🌸"];
+  for(var i=0;i<26;i++){(function(){var s=el("span","fx",pick(em));s.style.left=rnd(20,80)+"vw";s.style.top="55vh";
+    s.style.setProperty("--dx",rnd(-160,160)+"px");s.style.setProperty("--dy",rnd(-380,-120)+"px");document.body.appendChild(s);setTimeout(function(){s.remove()},1700)})()}
+}
+})();
+</script>
+<script>if("serviceWorker" in navigator){window.addEventListener("load",function(){navigator.serviceWorker.register("sw.js").catch(function(){})})}</script>
+</body>
+</html>
